@@ -11,31 +11,20 @@ AccelStepper stepper1(HALFSTEP, motorPin1, motorPin3, motorPin2, motorPin4);  //
 
 //Diode
 int sensePin=0;
+int brightest = 0;
+int stepCount = 0;
+int brightestPos=0;
+int totalSteps=30000;
 
-// Override Button Variables
-#define buttonGND 5                                                           // Defines the pin that will be held low, acting as a ground for the override button
-#define buttonActivate 2                                                      // Defines the pin that will be pulled low when the button is pushed (to activate the hand)
-volatile bool buttonPushed = false;                                           // Boolean Variable used to hold the current state of the override button. 'true' if the button has been pushed, 'false' when the program has handled a button press 
 
-// Average Background Noise Variables
-#define noiseArraySize 100                                                    // Defines the size of the array which will calculate the average background noise
-unsigned int noiseArray[noiseArraySize];                                      // Positive Integer Array used to collected background sound data, used to calculate average sound level. Read from Analog Pin 0, with data ranging from 0 to 1023 (limit from analog pin)
-float averageNoise;                                                           // Floating Point Variable used to hold the calculated average of the background noise. Floating variable values can be between -3.4028235E+38 and 3.4028235E+38
-long int noiseArraySum;                                                       // Long Integer Variable to hold the sum all the noise values used to calculate the average background noise. Values can be between -2,147,483,648 and 2,147,483,647
-
-// Muscle Signal Analysis Variables
-#define soundArraySize 35                                                     // Defines the size of the array which is used to hold the sounds being evaluated
-unsigned int soundArray[soundArraySize];                                      // Positive Integer Array used to collect the sound data being evaluated to determine if a muscle signal has been received. Read from Analog Pin 0, with data ranging from 0 to 1023 (limit from analog pin)
-unsigned int signalMax;                                                       // Positive Integer Variable used to hold the maximum value of the signal under consideration. Value range: 0-65535
-unsigned int signalMin;                                                       // Positive Integer Variable used to hold the minimum value of the signal under consideration. Value range: 0-65535
-float signalAverage;                                                          // Floating Point Variable used to hold the calculated average of the signal under consideration. Floating variable values can be between -3.4028235E+38 and 3.4028235E+38
-bool handOpen = true;                                                         // Boolean Variable used to hold the current position of the hand. 'true' hand is open, 'false' hand is closed
 
 // Setup Loop
 void setup() {
   //DiodeSetUp
   analogReference(DEFAULT); //isn't necessary
   Serial.begin(9600);
+
+  
   
   // Set motor's maximum speed and acceleration
   stepper1.setMaxSpeed(100000);                                               // Set the maximum speed of the motor
@@ -55,16 +44,45 @@ void setup() {
   }                                                                           // End For Loop: Move the hand clockwise one step at a time
   stepper1.disableOutputs();                                                  // Disable the motor controller's outputs to save power
   digitalWrite(13,LOW);                                                       // Turn off the LED to indicate that the hand is ready
-  handOpen = true;                                                            // Set the handOpen variable to 'true' to indicate that the hand is now open
 
 }
 void loop() {   
   //forDiode
   Serial.println(analogRead(sensePin));
   delay(500);
+
+  while (stepCount<totalSteps) {
+    if (analogRead(sensePin)>brightest){
+      brightest=analogRead(sensePin);
+      brightestPos=stepCount;
+    }
+    //move 1;
+   
+    digitalWrite(13,HIGH);                                            //           Turn on on-board LED to indicate that the system is moving the hand
+    stepper1.enableOutputs();                                         //           Enable the motor controller's outputs
+    stepper1.move(1);                                              //             Set desired position relating to current position -1 = one step counterclockwise from current location
+    stepper1.run();                                                 //             Move motor one step towards desired location
+    delay (1);   
+    stepCount++;
+  }
+  
+  stepper1.enableOutputs();
+  while(stepCount>brightestPos)
+  {
+    stepper1.move(-1);
+    stepper1.run();
+    stepCount--;
+    delay(1);
+  }
   
   
-  stepper1.disableOutputs();                                                  // Shut off all power to the motor to extend battery life 
+  digitalWrite(13,LOW);                                             //           Turn off on-board LED to indicate that the hand has stopped moving
+  stepper1.disableOutputs();                                        //           Shut off all power to the motor to extend battery life  
+  goto bailout;
+  
+  
+  
+  /*stepper1.disableOutputs();                                                  // Shut off all power to the motor to extend battery life 
   if(handOpen == true) {                                              //         Start If statement: If hand is open close it
         // Close the hand
         digitalWrite(13,HIGH);                                            //           Turn on on-board LED to indicate that the system is moving the hand
@@ -92,7 +110,7 @@ void loop() {
     handOpen = true;                                                  //           Set the handOpen variable to 'true' to indicate that the hand is now open
     stepper1.disableOutputs();                                        //           Shut off all power to the motor to extend battery life  
     goto bailout;                                                     //           Exit out of If statement: If the sound data is loud enough to warrant further investigation
-  }                                                      //     End For loop: Determine if a muscle movement has occurred, see line 127
+  }*/                                                      //     End For loop: Determine if a muscle movement has occurred, see line 127
     bailout:                                                                  //     If a bailout condition has been met continue executing code from this point
     delay(100);                                                               //     Delay 100 ms before reading a new signal  
     digitalWrite(13,LOW);                                                     //     Turn off on-board LED to indicate that the hand has stopped moving
