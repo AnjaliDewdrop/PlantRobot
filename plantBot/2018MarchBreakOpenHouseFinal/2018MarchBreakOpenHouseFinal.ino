@@ -32,8 +32,12 @@ float signalAverage;                                                          //
 bool handOpen = true;                                                         // Boolean Variable used to hold the current position of the hand. 'true' hand is open, 'false' hand is closed
 
 // Setup Loop
-void setup() {                                                                // Start Setup Loop
-// Set motor's maximum speed and acceleration
+void setup() {
+  //DiodeSetUp
+  analogReference(DEFAULT); //isn't necessary
+  Serial.begin(9600);
+  
+  // Set motor's maximum speed and acceleration
   stepper1.setMaxSpeed(100000);                                               // Set the maximum speed of the motor
   stepper1.setAcceleration(300000.0);                                         // Set the maximum acceleration of the motor
   
@@ -54,7 +58,12 @@ void setup() {                                                                //
   handOpen = true;                                                            // Set the handOpen variable to 'true' to indicate that the hand is now open
 
 }
-void loop() {                                                                 // Start Main Loop
+void loop() {   
+  //forDiode
+  Serial.println(analogRead(sensePin));
+  delay(500);
+  
+  
   stepper1.disableOutputs();                                                  // Shut off all power to the motor to extend battery life 
   if(handOpen == true) {                                              //         Start If statement: If hand is open close it
         // Close the hand
